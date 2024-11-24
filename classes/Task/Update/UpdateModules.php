@@ -89,20 +89,23 @@ class UpdateModules extends AbstractTask
                     $moduleUnzipper->unzipModule($moduleUnzipperContext);
 
                     $dbVersion = (new ModuleVersionAdapter())->get($moduleInfos['name']);
-                    $module = \Module::getInstanceByName($moduleInfos['name']);
 
-                    if (!($module instanceof \Module)) {
-                        throw (new UpgradeException($this->translator->trans('[WARNING] Error when trying to retrieve module %s instance.', [$moduleInfos['name']])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+                    if ($dbVersion !== '') {
+                        $module = \Module::getInstanceByName($moduleInfos['name']);
+    
+                        if (!($module instanceof \Module)) {
+                            throw (new UpgradeException($this->translator->trans('[WARNING] Error when trying to retrieve module %s instance.', [$moduleInfos['name']])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+                        }
+    
+                        $moduleMigrationContext = new ModuleMigrationContext($module, $dbVersion);
+    
+                        if (!$moduleMigration->needMigration($moduleMigrationContext)) {
+                            $this->logger->info($this->translator->trans('Module %s does not need to be migrated. Module is up to date.', [$moduleInfos['name']]));
+                        } else {
+                            $moduleMigration->runMigration($moduleMigrationContext);
+                        }
+                        $moduleMigration->saveVersionInDb($moduleMigrationContext);
                     }
-
-                    $moduleMigrationContext = new ModuleMigrationContext($module, $dbVersion);
-
-                    if (!$moduleMigration->needMigration($moduleMigrationContext)) {
-                        $this->logger->info($this->translator->trans('Module %s does not need to be migrated. Module is up to date.', [$moduleInfos['name']]));
-                    } else {
-                        $moduleMigration->runMigration($moduleMigrationContext);
-                    }
-                    $moduleMigration->saveVersionInDb($moduleMigrationContext);
                 }
             } catch (UpgradeException $e) {
                 $this->handleException($e);
