@@ -92,11 +92,11 @@ class UpdateModules extends AbstractTask
 
                     if ($dbVersion !== '') {
                         $module = \Module::getInstanceByName($moduleInfos['name']);
-    
+
                         if (!($module instanceof \Module)) {
                             throw (new UpgradeException($this->translator->trans('[WARNING] Error when trying to retrieve module %s instance.', [$moduleInfos['name']])))->setSeverity(UpgradeException::SEVERITY_WARNING);
                         }
-    
+
                         $moduleMigrationContext = new ModuleMigrationContext($module, $dbVersion);
     
                         if (!$moduleMigration->needMigration($moduleMigrationContext)) {
