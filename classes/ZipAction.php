@@ -61,6 +61,11 @@ class ZipAction
      */
     private $prodRootDir;
 
+    /**
+     * @var bool
+     */
+    private $isWinOs;
+
     public function __construct(Filesystem $filesystem, Translator $translator, LoggerInterface $logger, UpgradeConfiguration $updateConfiguration, string $prodRootDir)
     {
         $this->filesystem = $filesystem;
@@ -69,6 +74,7 @@ class ZipAction
         $this->prodRootDir = $prodRootDir;
         $this->configMaxNbFilesCompressedInARow = $updateConfiguration->getNumberOfFilesPerCall();
         $this->configMaxFileSizeAllowed = $updateConfiguration->getMaxFileToBackup();
+        $this->isWinOs = stripos(PHP_OS, 'WIN') === 0;
     }
 
     /**
@@ -189,7 +195,9 @@ class ZipAction
             $nameIndex = $zip->getNameIndex($i);
             $zip->getExternalAttributesName($nameIndex, $opsys, $stat);
 
-            if ($opsys === ZipArchive::OPSYS_UNIX && $this->isCompressedFileASymLink($stat, $nameIndex)) {
+            // Skip symlink handling on Windows because creating symbolic links
+            // via ZipArchive/Filesystem is not properly supported and causes errors.
+            if ($opsys === ZipArchive::OPSYS_UNIX && $this->isCompressedFileASymLink($stat, $nameIndex) && !$this->isWinOs) {
                 $deferredLinks[] = $i;
             } elseif (!$zip->extractTo($to_dir, [$nameIndex])) {
                 $issue = $zip->getStatusString() ?: $this->translator->trans('Unknown extraction error (possible permission issue or filesystem error)');
